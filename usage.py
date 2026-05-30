@@ -9,7 +9,7 @@ Run it:
     py usage.py
 
 It prints one line of JSON, for example:
-    {"generated_at": "...", "today": {...}, "last_5h": {...}}
+    {"generated_at": "...", "session": {...}, "week": {...}}
 
 Later, the little round desk screen will read these same numbers
 and draw the gauge (Claude logo + a ring that fills green->amber->red).
@@ -88,17 +88,21 @@ def collect():
     now = datetime.datetime.now().astimezone()
     today = now.date()
     one_hour_ago = now - datetime.timedelta(hours=1)
+    five_hours_ago = now - datetime.timedelta(hours=5)   # Claude's session limit is a rolling 5h window
     week_ago = now - datetime.timedelta(days=7)
 
     hour_bucket = blank()
+    session_bucket = blank()     # last 5 hours -> PRIMARY "session" ring
     today_bucket = blank()
-    week_bucket = blank()
+    week_bucket = blank()        # last 7 days  -> SECONDARY "week" ring
 
     for ts, usage in iter_usage_records():
         if ts is None:
             continue
         if ts >= one_hour_ago:
             add(hour_bucket, usage)
+        if ts >= five_hours_ago:
+            add(session_bucket, usage)
         if ts >= week_ago:
             add(week_bucket, usage)
         if ts.date() == today:
@@ -106,9 +110,10 @@ def collect():
 
     return {
         "generated_at": now.isoformat(timespec="seconds"),
-        "hour": hour_bucket,    # outer ring
+        "session": session_bucket,   # primary ring  (rolling 5 hours)
+        "hour": hour_bucket,         # kept for reference / debugging
         "today": today_bucket,
-        "week": week_bucket,    # inner ring
+        "week": week_bucket,         # secondary ring (rolling 7 days)
     }
 
 

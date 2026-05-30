@@ -1,4 +1,6 @@
 _diagnose.png
+_diagnose.py
+_check.js
 __pycache__/
 *.pyc
 .DS_Store

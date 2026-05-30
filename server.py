@@ -51,9 +51,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass  # keep the window quiet
 
 
+class Server(socketserver.TCPServer):
+    # Lets the server grab the port again immediately after a restart,
+    # instead of failing with "port busy" while the old socket cools down.
+    allow_reuse_address = True
+
+
 if __name__ == "__main__":
     print("Claude usage preview is running.")
     print("Open this in your browser:  http://localhost:%d" % PORT)
     print("(Keep this window open. Press Ctrl+C to stop.)")
-    with socketserver.TCPServer(("127.0.0.1", PORT), Handler) as httpd:
+    with Server(("127.0.0.1", PORT), Handler) as httpd:
         httpd.serve_forever()

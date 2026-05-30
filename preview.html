@@ -7,55 +7,59 @@
 <style>
   :root { color-scheme: dark; }
   html, body {
-    margin: 0; height: 100%;
-    background: radial-gradient(circle at 50% 30%, #14141a 0%, #06060a 70%);
+    margin: 0; min-height: 100%;
+    background: radial-gradient(circle at 50% 28%, #141417 0%, #050506 70%);
     color: #e8e8ea;
     font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 20px; padding: 28px;
+    gap: 16px; padding: 26px; box-sizing: border-box;
   }
-  .title { font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: #6c6c78; }
+  .title { font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: #6c6c78; }
   .bezel {
     width: 344px; height: 344px; border-radius: 50%;
-    background: linear-gradient(145deg, #2a2a30, #0d0d10);
+    background: linear-gradient(145deg, #26262b, #0c0c0f);
     padding: 12px; box-sizing: border-box;
-    box-shadow:
-      0 24px 60px rgba(0,0,0,.65),
-      inset 0 2px 3px rgba(255,255,255,.06),
-      0 0 60px rgba(217,119,87,.10);
+    box-shadow: 0 24px 60px rgba(0,0,0,.65), inset 0 2px 3px rgba(255,255,255,.06), 0 0 50px rgba(217,119,87,.08);
   }
-  .bezel canvas { display: block; border-radius: 50%; background: #000; }
+  .bezel canvas { display: block; border-radius: 50%; background: #161616; }
+  .legend { display: flex; gap: 16px; font-size: 11px; color: #8a8a93; letter-spacing: .04em; }
+  .legend b { color: #cfcfd6; font-weight: 600; }
   .controls { display: flex; gap: 18px; font-size: 13px; color: #b9b9c2; }
   .controls label { display: flex; align-items: center; gap: 6px; }
-  .controls input {
-    width: 52px; background: #1a1a20; color: #f0f0f2;
-    border: 1px solid #34343c; border-radius: 8px; padding: 5px 6px; font-size: 13px;
-    text-align: center;
-  }
-  .legend { display: flex; gap: 18px; font-size: 11px; color: #8a8a93; letter-spacing: .08em; }
-  .legend b { color: #cfcfd6; }
+  .controls input { width: 56px; background: #1a1a20; color: #f0f0f2; border: 1px solid #34343c; border-radius: 8px; padding: 5px 6px; font-size: 13px; text-align: center; }
+  .demo { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #7a7a86; flex-wrap: wrap; justify-content: center; }
+  .demo button { background:#1a1a20; color:#cfcfd6; border:1px solid #34343c; border-radius:7px; padding:4px 9px; font-size:12px; cursor:pointer; }
+  .demo button:hover { border-color:#5a5a66; color:#fff; }
   .cap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6c6c78; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ADE80; box-shadow: 0 0 8px #4ADE80; }
-  .note { max-width: 380px; text-align: center; font-size: 12.5px; line-height: 1.55; color: #7a7a86; }
+  .note { max-width: 410px; text-align: center; font-size: 12px; line-height: 1.55; color: #6f6f7a; }
 </style>
 </head>
 <body>
-  <div class="title">Desk Screen · Live Preview</div>
+  <div class="title">Claude Usage · Desk Screen</div>
   <div class="bezel"><canvas id="screen"></canvas></div>
-  <div class="legend"><span>◷ <b>outer</b> = this hour</span><span>▦ <b>inner</b> = this week</span></div>
+  <div class="legend"><span><b>thick ring</b> = session · 5h</span><span><b>thin ring</b> = week · 7d</span></div>
   <div class="controls">
-    <label>Hourly limit <input id="hlimit" type="number" min="1" step="1" value="20"> M</label>
-    <label>Weekly limit <input id="wlimit" type="number" min="1" step="1" value="800"> M</label>
+    <label>Session redline <input id="sbudget" type="number" min="1" step="1" value="100"> M</label>
+    <label>Week redline <input id="wbudget" type="number" min="1" step="1" value="900"> M</label>
+  </div>
+  <div class="demo">
+    <span>preview:</span>
+    <button data-live="1">live</button>
+    <button data-s="34" data-w="28">calm</button>
+    <button data-s="66" data-w="55">focused</button>
+    <button data-s="88" data-w="72">worried</button>
+    <button data-s="98" data-w="95">dead</button>
   </div>
   <div class="cap"><span class="dot"></span><span id="updated">starting…</span></div>
-  <p class="note">Live preview of your desk screen — the real 240×240 panel renders this 1:1 (so it's even crisper than here). Tell me what to change.</p>
+  <p class="note">Vibe gauge — not an official fuel gauge. The limits below are your own estimates (Anthropic doesn't publish the real ones); the screen just shows how hard you're leaning on Claude. The real 240×240 round panel renders this 1:1.</p>
 
 <script>
   const canvas = document.getElementById('screen');
   const ctx = canvas.getContext('2d');
 
-  // Backing buffer = integer multiple of the 240px design space => sprite tiles
-  // land on whole pixels (no seam artifacts). Rings stay smooth (anti-aliased).
+  // Backing buffer = integer multiple of the 240px design space so sprite
+  // cells land on whole pixels (crisp, no seams). Rings keep light AA.
   const DESIGN = 240;
   const ratio = Math.max(1, window.devicePixelRatio || 1);
   const K = Math.max(2, Math.round(320 * ratio / DESIGN));
@@ -65,14 +69,39 @@
   canvas.style.height = '320px';
   ctx.scale(K, K);
 
-  let hourLimit = 20e6, weekLimit = 800e6;
-  let hourVal = 0, weekVal = 0;
-  let hourTarget = 0, weekTarget = 0, hourShown = 0, weekShown = 0;
+  // =====================================================================
+  //  YOUR PERSONAL REDLINES  —  edit these two numbers
+  //  These are ESTIMATES you set yourself, NOT Anthropic's real limits
+  //  (those are not published). The device is a "vibe gauge" showing how
+  //  hard you are leaning on Claude across a rolling 5-hour SESSION and a
+  //  rolling 7-day WEEK — it is not an official fuel gauge.
+  //  percent = tokens_used / your_redline, capped at 100%.
+  // =====================================================================
+  const SESSION_BUDGET_TOKENS = 100_000_000;  // ~5h session redline (personal estimate)
+  const WEEKLY_BUDGET_TOKENS  = 900_000_000;  // ~7d weekly redline  (personal estimate)
 
-  const ORANGE = '#C2613D', EYE = '#100f12', OUTLINE = '#F3EDE3';
-  const EMPTY_SEG = '#2b2e34', DIVIDER = '#3a3d44';
+  let sessionBudget = SESSION_BUDGET_TOKENS;
+  let weekBudget = WEEKLY_BUDGET_TOKENS;
 
-  // ---------- pixel maps ----------
+  let sessionVal = 0, weekVal = 0;          // live token totals from the server
+  let demoSession = null, demoWeek = null;  // preview-only overrides (fractions 0..1)
+  let sessionTarget = 0, weekTarget = 0;    // 0..1 (used / budget)
+  let sessionShown = 0, weekShown = 0;      // animated fill
+
+  // ---------- palette ----------
+  const SCREEN_BG = '#161616';
+  const GREEN = '#4ADE80', AMBER = '#F59E0B', RED = '#EF4444';   // primary: meaning = how close to limit
+  const EMPTY_PRIMARY = '#2c2c2c';
+  const SEC_BLUE = '#3d6b9e', SEC_AMBER = '#a87b1e', SEC_RED = '#a8413d'; // secondary: muted, never competes
+  const EMPTY_SECONDARY = '#202022';
+  const ORANGE = '#C2613D', EYE = '#100f12', OUTLINE = '#F3EDE3', SWEAT = '#bfe3ff';
+
+  function primaryColor(p)   { return p < 0.5 ? GREEN   : (p < 0.8 ? AMBER     : RED); }
+  function secondaryColor(p) { return p < 0.5 ? SEC_BLUE : (p < 0.8 ? SEC_AMBER : SEC_RED); }
+  // face escalates on the WORSE of the two rings: 0 calm, 1 focused, 2 worried, 3 dead
+  function faceLevel(p) { return p < 0.5 ? 0 : (p < 0.8 ? 1 : (p < 0.95 ? 2 : 3)); }
+
+  // ---------- your pixel creature (unchanged art) ----------
   const ART = [
     ".OOOOOOOOOOOOOO.",
     ".OOOOOOOOOOOOOO.",
@@ -88,36 +117,28 @@
     ".OOO..OOOO..OOO.",
     ".OOO..OOOO..OOO."
   ];
-  const CLOCK = [".###.", "#.#.#", "#.###", "#...#", ".###."];
-  const CAL   = [".#.#.", "#####", "#...#", "#.#.#", "#####"];
 
-  // ---------- color ramp: green -> amber -> red ----------
-  function lerp(a, b, u) { return Math.round(a + (b - a) * u); }
-  function gradientColor(t) {
-    t = Math.max(0, Math.min(1, t));
-    const green = [74, 222, 128], amber = [245, 158, 11], red = [239, 68, 68];
-    let c;
-    if (t < 0.5) { const u = t / 0.5; c = [lerp(green[0],amber[0],u), lerp(green[1],amber[1],u), lerp(green[2],amber[2],u)]; }
-    else         { const u = (t-0.5)/0.5; c = [lerp(amber[0],red[0],u), lerp(amber[1],red[1],u), lerp(amber[2],red[2],u)]; }
-    return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
-  }
+  // face cells as [col,row] on the 16x13 grid. eyes/brows/mouth = EYE color; sweat = SWEAT color
+  const FACES = {
+    0: { eye: [[4,4],[5,4],[4,5],[5,5], [10,4],[11,4],[10,5],[11,5]], sweat: [] },                                  // calm: round eyes
+    1: { eye: [[3,5],[4,5],[5,5], [10,5],[11,5],[12,5]], sweat: [] },                                               // focused: narrowed slits
+    2: { eye: [[4,5],[5,5],[10,5],[11,5], [5,3],[4,3],[3,4], [10,3],[11,3],[12,4], [7,9],[8,9]], sweat: [[13,3],[13,4]] }, // worried: raised brows + sweat + small mouth
+    3: { eye: [[3,3],[5,3],[4,4],[3,5],[5,5], [9,3],[11,3],[10,4],[9,5],[11,5], [6,9],[7,9],[8,9],[9,9]], sweat: [] }       // dead: x_x + flat mouth
+  };
 
-  // ---------- creature ----------
-  function drawCreature(cx, cy, px, strained) {
+  function drawCreature(cx, cy, px, level) {
     const rows = ART.length, cols = ART[0].length;
     const ox = Math.round(cx - (cols * px) / 2), oy = Math.round(cy - (rows * px) / 2);
-    const INF = 0.5;   // slight overlap removes hairline seams between blocks
+    const INF = 0.5;   // tiny overlap kills hairline seams between cells
     const isBody = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols && ART[r][c] !== '.';
     const block = (c, r) => ctx.fillRect(ox + c * px - INF, oy + r * px - INF, px + 2 * INF, px + 2 * INF);
 
-    // solid orange body (eyes go on top)
     ctx.fillStyle = ORANGE;
     for (let r = 0; r < rows; r++)
       for (let c = 0; c < cols; c++)
         if (ART[r][c] !== '.') block(c, r);
 
-    // cream sticker outline, drawn over the body edge for a crisp boundary
-    ctx.fillStyle = OUTLINE;
+    ctx.fillStyle = OUTLINE;   // cream sticker edge
     for (let r = 0; r < rows; r++)
       for (let c = 0; c < cols; c++)
         if (ART[r][c] === '.' && (
@@ -125,139 +146,105 @@
             isBody(r-1,c-1) || isBody(r-1,c+1) || isBody(r+1,c-1) || isBody(r+1,c+1)))
           block(c, r);
 
-    // face
+    const f = FACES[level] || FACES[0];
     ctx.fillStyle = EYE;
-    if (!strained) {
-      ctx.fillRect(ox + 4 * px, oy + 4 * px, 2 * px, 2 * px);
-      ctx.fillRect(ox + 10 * px, oy + 4 * px, 2 * px, 2 * px);
-    } else {
-      const dot = (bx, by) => ctx.fillRect(Math.round(bx), Math.round(by), Math.ceil(px), Math.ceil(px));
-      const lx = ox + 4 * px, rx = ox + 10 * px, ey = oy + 4 * px;   // eye-cell corners
-      dot(lx, ey);            dot(lx + px, ey + px); dot(lx, ey + 2 * px);          // '>'
-      dot(rx + px, ey);       dot(rx, ey + px);      dot(rx + px, ey + 2 * px);     // '<'
-    }
+    for (const cr of f.eye) block(cr[0], cr[1]);
+    ctx.fillStyle = SWEAT;
+    for (const cr of f.sweat) block(cr[0], cr[1]);
   }
 
-  // ---------- rings: each block rotated tangent to the circle ----------
+  // ---------- segmented rings (single colour per ring = how close to limit) ----------
   function seg(x, y, a, thick, len, col, glow) {
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(a);
-    if (glow) { ctx.shadowColor = col; ctx.shadowBlur = 8; }
+    ctx.rotate(a);                 // tangent to the circle (keeps the dashed-pixel look)
+    if (glow) { ctx.shadowColor = col; ctx.shadowBlur = 6; }
     ctx.fillStyle = col;
     if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(-thick / 2, -len / 2, thick, len, 2); ctx.fill(); }
     else ctx.fillRect(-thick / 2, -len / 2, thick, len);
     ctx.restore();
   }
-  function drawRing(R, N, thick, len, pct) {
-    const filled = Math.round(Math.min(1, pct) * N);
+  function drawRing(R, N, thick, len, pct, fillCol, emptyCol, glow) {
+    const filled = Math.round(Math.min(1, Math.max(0, pct)) * N);
     for (let i = 0; i < N; i++) {
-      const a = -Math.PI / 2 + (i / N) * 2 * Math.PI;
+      const a = -Math.PI / 2 + (i / N) * 2 * Math.PI;   // start 12 o'clock, fill clockwise
       const x = 120 + Math.cos(a) * R, y = 120 + Math.sin(a) * R;
       const on = i < filled;
-      seg(x, y, a, thick, len, on ? gradientColor(i / (N - 1)) : EMPTY_SEG, on);
+      seg(x, y, a, thick, len, on ? fillCol : emptyCol, on && glow);
     }
     ctx.shadowBlur = 0;
   }
 
-  // ---------- icons ----------
-  function drawIcon(map, x, yTop, ipx, color) {
-    ctx.fillStyle = color;
-    const INF = 0.4;
-    for (let r = 0; r < map.length; r++)
-      for (let c = 0; c < map[r].length; c++)
-        if (map[r][c] === '#')
-          ctx.fillRect(x + c * ipx - INF, yTop + r * ipx - INF, ipx + 2 * INF, ipx + 2 * INF);
-  }
-
-  function fmtShort(n) {
-    n = Math.round(n);
-    if (n >= 1e6) return Math.round(n / 1e6) + 'M';
-    if (n >= 1e3) return Math.round(n / 1e3) + 'K';
-    return '' + n;
-  }
-
-  // ---------- readout: clock-icon hour  |  calendar-icon week ----------
-  function drawReadout(textY) {
-    const fs = 16;
-    ctx.font = '700 ' + fs + 'px Consolas, "Courier New", monospace';
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'left';
-
-    const ipx = 2.4, iconSize = 5 * ipx, iconGap = 3, groupGap = 18;
-    const hNum = fmtShort(hourVal), wNum = fmtShort(weekVal);
-    const hNumW = ctx.measureText(hNum).width, wNumW = ctx.measureText(wNum).width;
-    const hGroupW = iconSize + iconGap + hNumW;
-    const wGroupW = iconSize + iconGap + wNumW;
-    const total = hGroupW + groupGap + wGroupW;
-    let x = 120 - total / 2;
-    const hCol = gradientColor(hourTarget), wCol = gradientColor(weekTarget);
-
-    drawIcon(CLOCK, x, textY - iconSize / 2, ipx, hCol);
-    ctx.fillStyle = hCol; ctx.fillText(hNum, x + iconSize + iconGap, textY);
-    x += hGroupW;
-
-    ctx.fillStyle = DIVIDER;
-    ctx.fillRect(Math.round(x + groupGap / 2 - 1), textY - 5, 2, 10);
-    x += groupGap;
-
-    drawIcon(CAL, x, textY - iconSize / 2, ipx, wCol);
-    ctx.fillStyle = wCol; ctx.fillText(wNum, x + iconSize + iconGap, textY);
-  }
-
-  // ---------- compose ----------
+  // ---------- compose the whole screen ----------
   function draw() {
     ctx.clearRect(0, 0, DESIGN, DESIGN);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(120, 120, 120, 0, 2 * Math.PI);
+    ctx.fillStyle = SCREEN_BG; ctx.fill();
+    ctx.clip();   // round panel — nothing draws outside the circle
 
-    const g = ctx.createRadialGradient(120, 96, 16, 120, 120, 122);
-    g.addColorStop(0, '#15151a');
-    g.addColorStop(1, '#08080b');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(120, 120, 120, 0, 2 * Math.PI); ctx.fill();
+    const pCol = primaryColor(sessionTarget);
+    const sCol = secondaryColor(weekTarget);
 
-    drawRing(103, 48, 7, 11, hourShown);   // outer = this hour
-    drawRing(80, 40, 6, 9, weekShown);     // inner = this week
+    drawRing(111, 40, 14, 13, sessionShown, pCol, EMPTY_PRIMARY, true);   // PRIMARY: session (5h), thick, hugs edge
+    drawRing(95,  40,  6, 10, weekShown,   sCol, EMPTY_SECONDARY, false); // SECONDARY: week (7d), thin, muted
 
-    const px = 4;
-    const spriteH = ART.length * px;
-    const fs = 16, padGap = 11;
-    const groupH = spriteH + padGap + fs;
-    const top = 120 - groupH / 2;
-    const spriteCY = top + spriteH / 2;
-    const textY = top + spriteH + padGap + fs / 2;
+    drawCreature(120, 95, 6, faceLevel(Math.max(sessionTarget, weekTarget)));   // centerpiece (raised so it clears the readout)
 
-    const strained = Math.max(hourTarget, weekTarget) >= 0.85;
-    drawCreature(120, spriteCY, px, strained);
-    drawReadout(textY);
+    // readout: one big session %, tiny week % beneath it
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = pCol;
+    ctx.font = '700 24px Consolas, "Courier New", monospace';
+    ctx.fillText(Math.round(sessionTarget * 100) + '%', 120, 165);
+    ctx.fillStyle = sCol;
+    ctx.font = '600 11px Consolas, "Courier New", monospace';
+    ctx.fillText('week ' + Math.round(weekTarget * 100) + '%', 120, 182);
+
+    ctx.restore();
   }
 
   function recompute() {
-    hourTarget = Math.min(1, hourVal / hourLimit);
-    weekTarget = Math.min(1, weekVal / weekLimit);
+    const sTok = (demoSession != null) ? demoSession * sessionBudget : sessionVal;
+    const wTok = (demoWeek != null) ? demoWeek * weekBudget : weekVal;
+    sessionTarget = Math.min(1, sTok / sessionBudget);
+    weekTarget = Math.min(1, wTok / weekBudget);
   }
 
-  document.getElementById('hlimit').addEventListener('input', (e) => {
-    const m = parseFloat(e.target.value); if (m > 0) { hourLimit = m * 1e6; recompute(); }
-  });
-  document.getElementById('wlimit').addEventListener('input', (e) => {
-    const m = parseFloat(e.target.value); if (m > 0) { weekLimit = m * 1e6; recompute(); }
-  });
+  // ---------- controls + preview helpers ----------
+  const sbudget = document.getElementById('sbudget');
+  const wbudget = document.getElementById('wbudget');
+  sbudget.addEventListener('input', (e) => { const m = parseFloat(e.target.value); if (m > 0) { sessionBudget = m * 1e6; recompute(); } });
+  wbudget.addEventListener('input', (e) => { const m = parseFloat(e.target.value); if (m > 0) { weekBudget = m * 1e6; recompute(); } });
 
+  for (const b of document.querySelectorAll('.demo button')) {
+    b.addEventListener('click', () => {
+      if (b.dataset.live) { demoSession = null; demoWeek = null; }
+      else { demoSession = (+b.dataset.s) / 100; demoWeek = (+b.dataset.w) / 100; }
+      recompute();
+    });
+  }
+
+  // debug hook for automated screenshots: __preview(88, 72) snaps instantly; __live() returns to real data
+  window.__preview = (s, w) => { demoSession = s / 100; demoWeek = (w == null ? s : w) / 100; recompute(); sessionShown = sessionTarget; weekShown = weekTarget; };
+  window.__live = () => { demoSession = null; demoWeek = null; recompute(); };
+
+  const updated = document.getElementById('updated');
   async function poll() {
     try {
       const r = await fetch('/usage', { cache: 'no-store' });
       const d = await r.json();
-      hourVal = d.hour.total;
-      weekVal = d.week.total;
+      sessionVal = d.session ? d.session.total : (d.hour ? d.hour.total : 0);
+      weekVal = d.week ? d.week.total : 0;
       recompute();
-      document.getElementById('updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+      updated.textContent = 'updated ' + new Date().toLocaleTimeString();
     } catch (e) {
-      document.getElementById('updated').textContent = 'waiting for server…';
+      updated.textContent = 'waiting for server…';
     }
   }
 
   function frame() {
-    hourShown += (hourTarget - hourShown) * 0.08;
+    sessionShown += (sessionTarget - sessionShown) * 0.08;
     weekShown += (weekTarget - weekShown) * 0.08;
     draw();
     requestAnimationFrame(frame);

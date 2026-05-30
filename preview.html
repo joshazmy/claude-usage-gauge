@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Usage — Desk Screen Preview</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0; height: 100%;
+    background: radial-gradient(circle at 50% 30%, #14141a 0%, #06060a 70%);
+    color: #e8e8ea;
+    font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px; padding: 28px;
+  }
+  .title { font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: #6c6c78; }
+  .bezel {
+    width: 344px; height: 344px; border-radius: 50%;
+    background: linear-gradient(145deg, #2a2a30, #0d0d10);
+    padding: 12px; box-sizing: border-box;
+    box-shadow:
+      0 24px 60px rgba(0,0,0,.65),
+      inset 0 2px 3px rgba(255,255,255,.06),
+      0 0 60px rgba(217,119,87,.10);
+  }
+  .bezel canvas { display: block; border-radius: 50%; background: #000; }
+  .controls { display: flex; gap: 18px; font-size: 13px; color: #b9b9c2; }
+  .controls label { display: flex; align-items: center; gap: 6px; }
+  .controls input {
+    width: 52px; background: #1a1a20; color: #f0f0f2;
+    border: 1px solid #34343c; border-radius: 8px; padding: 5px 6px; font-size: 13px;
+    text-align: center;
+  }
+  .legend { display: flex; gap: 18px; font-size: 11px; color: #8a8a93; letter-spacing: .08em; }
+  .legend b { color: #cfcfd6; }
+  .cap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6c6c78; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ADE80; box-shadow: 0 0 8px #4ADE80; }
+  .note { max-width: 380px; text-align: center; font-size: 12.5px; line-height: 1.55; color: #7a7a86; }
+</style>
+</head>
+<body>
+  <div class="title">Desk Screen · Live Preview</div>
+  <div class="bezel"><canvas id="screen"></canvas></div>
+  <div class="legend"><span>◷ <b>outer</b> = this hour</span><span>▦ <b>inner</b> = this week</span></div>
+  <div class="controls">
+    <label>Hourly limit <input id="hlimit" type="number" min="1" step="1" value="20"> M</label>
+    <label>Weekly limit <input id="wlimit" type="number" min="1" step="1" value="800"> M</label>
+  </div>
+  <div class="cap"><span class="dot"></span><span id="updated">starting…</span></div>
+  <p class="note">Live preview of your desk screen — the real 240×240 panel renders this 1:1 (so it's even crisper than here). Tell me what to change.</p>
+
+<script>
+  const canvas = document.getElementById('screen');
+  const ctx = canvas.getContext('2d');
+
+  // Backing buffer = integer multiple of the 240px design space => sprite tiles
+  // land on whole pixels (no seam artifacts). Rings stay smooth (anti-aliased).
+  const DESIGN = 240;
+  const ratio = Math.max(1, window.devicePixelRatio || 1);
+  const K = Math.max(2, Math.round(320 * ratio / DESIGN));
+  canvas.width = DESIGN * K;
+  canvas.height = DESIGN * K;
+  canvas.style.width = '320px';
+  canvas.style.height = '320px';
+  ctx.scale(K, K);
+
+  let hourLimit = 20e6, weekLimit = 800e6;
+  let hourVal = 0, weekVal = 0;
+  let hourTarget = 0, weekTarget = 0, hourShown = 0, weekShown = 0;
+
+  const ORANGE = '#C2613D', EYE = '#100f12', OUTLINE = '#F3EDE3';
+  const EMPTY_SEG = '#2b2e34', DIVIDER = '#3a3d44';
+
+  // ---------- pixel maps ----------
+  const ART = [
+    ".OOOOOOOOOOOOOO.",
+    ".OOOOOOOOOOOOOO.",
+    "OOOOOOOOOOOOOOOO",
+    "OOOOOOOOOOOOOOOO",
+    ".OOOBBOOOOBBOOO.",
+    ".OOOBBOOOOBBOOO.",
+    ".OOOOOOOOOOOOOO.",
+    ".OOOOOOOOOOOOOO.",
+    ".OOOOOOOOOOOOOO.",
+    ".OOOOOOOOOOOOOO.",
+    ".OOOOOOOOOOOOOO.",
+    ".OOO..OOOO..OOO.",
+    ".OOO..OOOO..OOO."
+  ];
+  const CLOCK = [".###.", "#.#.#", "#.###", "#...#", ".###."];
+  const CAL   = [".#.#.", "#####", "#...#", "#.#.#", "#####"];
+
+  // ---------- color ramp: green -> amber -> red ----------
+  function lerp(a, b, u) { return Math.round(a + (b - a) * u); }
+  function gradientColor(t) {
+    t = Math.max(0, Math.min(1, t));
+    const green = [74, 222, 128], amber = [245, 158, 11], red = [239, 68, 68];
+    let c;
+    if (t < 0.5) { const u = t / 0.5; c = [lerp(green[0],amber[0],u), lerp(green[1],amber[1],u), lerp(green[2],amber[2],u)]; }
+    else         { const u = (t-0.5)/0.5; c = [lerp(amber[0],red[0],u), lerp(amber[1],red[1],u), lerp(amber[2],red[2],u)]; }
+    return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+  }
+
+  // ---------- creature ----------
+  function drawCreature(cx, cy, px, strained) {
+    const rows = ART.length, cols = ART[0].length;
+    const ox = Math.round(cx - (cols * px) / 2), oy = Math.round(cy - (rows * px) / 2);
+    const INF = 0.5;   // slight overlap removes hairline seams between blocks
+    const isBody = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols && ART[r][c] !== '.';
+    const block = (c, r) => ctx.fillRect(ox + c * px - INF, oy + r * px - INF, px + 2 * INF, px + 2 * INF);
+
+    // solid orange body (eyes go on top)
+    ctx.fillStyle = ORANGE;
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        if (ART[r][c] !== '.') block(c, r);
+
+    // cream sticker outline, drawn over the body edge for a crisp boundary
+    ctx.fillStyle = OUTLINE;
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++)
+        if (ART[r][c] === '.' && (
+            isBody(r-1,c) || isBody(r+1,c) || isBody(r,c-1) || isBody(r,c+1) ||
+            isBody(r-1,c-1) || isBody(r-1,c+1) || isBody(r+1,c-1) || isBody(r+1,c+1)))
+          block(c, r);
+
+    // face
+    ctx.fillStyle = EYE;
+    if (!strained) {
+      ctx.fillRect(ox + 4 * px, oy + 4 * px, 2 * px, 2 * px);
+      ctx.fillRect(ox + 10 * px, oy + 4 * px, 2 * px, 2 * px);
+    } else {
+      const dot = (bx, by) => ctx.fillRect(Math.round(bx), Math.round(by), Math.ceil(px), Math.ceil(px));
+      const lx = ox + 4 * px, rx = ox + 10 * px, ey = oy + 4 * px;   // eye-cell corners
+      dot(lx, ey);            dot(lx + px, ey + px); dot(lx, ey + 2 * px);          // '>'
+      dot(rx + px, ey);       dot(rx, ey + px);      dot(rx + px, ey + 2 * px);     // '<'
+    }
+  }
+
+  // ---------- rings: each block rotated tangent to the circle ----------
+  function seg(x, y, a, thick, len, col, glow) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(a);
+    if (glow) { ctx.shadowColor = col; ctx.shadowBlur = 8; }
+    ctx.fillStyle = col;
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(-thick / 2, -len / 2, thick, len, 2); ctx.fill(); }
+    else ctx.fillRect(-thick / 2, -len / 2, thick, len);
+    ctx.restore();
+  }
+  function drawRing(R, N, thick, len, pct) {
+    const filled = Math.round(Math.min(1, pct) * N);
+    for (let i = 0; i < N; i++) {
+      const a = -Math.PI / 2 + (i / N) * 2 * Math.PI;
+      const x = 120 + Math.cos(a) * R, y = 120 + Math.sin(a) * R;
+      const on = i < filled;
+      seg(x, y, a, thick, len, on ? gradientColor(i / (N - 1)) : EMPTY_SEG, on);
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  // ---------- icons ----------
+  function drawIcon(map, x, yTop, ipx, color) {
+    ctx.fillStyle = color;
+    const INF = 0.4;
+    for (let r = 0; r < map.length; r++)
+      for (let c = 0; c < map[r].length; c++)
+        if (map[r][c] === '#')
+          ctx.fillRect(x + c * ipx - INF, yTop + r * ipx - INF, ipx + 2 * INF, ipx + 2 * INF);
+  }
+
+  function fmtShort(n) {
+    n = Math.round(n);
+    if (n >= 1e6) return Math.round(n / 1e6) + 'M';
+    if (n >= 1e3) return Math.round(n / 1e3) + 'K';
+    return '' + n;
+  }
+
+  // ---------- readout: clock-icon hour  |  calendar-icon week ----------
+  function drawReadout(textY) {
+    const fs = 16;
+    ctx.font = '700 ' + fs + 'px Consolas, "Courier New", monospace';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+
+    const ipx = 2.4, iconSize = 5 * ipx, iconGap = 3, groupGap = 18;
+    const hNum = fmtShort(hourVal), wNum = fmtShort(weekVal);
+    const hNumW = ctx.measureText(hNum).width, wNumW = ctx.measureText(wNum).width;
+    const hGroupW = iconSize + iconGap + hNumW;
+    const wGroupW = iconSize + iconGap + wNumW;
+    const total = hGroupW + groupGap + wGroupW;
+    let x = 120 - total / 2;
+    const hCol = gradientColor(hourTarget), wCol = gradientColor(weekTarget);
+
+    drawIcon(CLOCK, x, textY - iconSize / 2, ipx, hCol);
+    ctx.fillStyle = hCol; ctx.fillText(hNum, x + iconSize + iconGap, textY);
+    x += hGroupW;
+
+    ctx.fillStyle = DIVIDER;
+    ctx.fillRect(Math.round(x + groupGap / 2 - 1), textY - 5, 2, 10);
+    x += groupGap;
+
+    drawIcon(CAL, x, textY - iconSize / 2, ipx, wCol);
+    ctx.fillStyle = wCol; ctx.fillText(wNum, x + iconSize + iconGap, textY);
+  }
+
+  // ---------- compose ----------
+  function draw() {
+    ctx.clearRect(0, 0, DESIGN, DESIGN);
+
+    const g = ctx.createRadialGradient(120, 96, 16, 120, 120, 122);
+    g.addColorStop(0, '#15151a');
+    g.addColorStop(1, '#08080b');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(120, 120, 120, 0, 2 * Math.PI); ctx.fill();
+
+    drawRing(103, 48, 7, 11, hourShown);   // outer = this hour
+    drawRing(80, 40, 6, 9, weekShown);     // inner = this week
+
+    const px = 4;
+    const spriteH = ART.length * px;
+    const fs = 16, padGap = 11;
+    const groupH = spriteH + padGap + fs;
+    const top = 120 - groupH / 2;
+    const spriteCY = top + spriteH / 2;
+    const textY = top + spriteH + padGap + fs / 2;
+
+    const strained = Math.max(hourTarget, weekTarget) >= 0.85;
+    drawCreature(120, spriteCY, px, strained);
+    drawReadout(textY);
+  }
+
+  function recompute() {
+    hourTarget = Math.min(1, hourVal / hourLimit);
+    weekTarget = Math.min(1, weekVal / weekLimit);
+  }
+
+  document.getElementById('hlimit').addEventListener('input', (e) => {
+    const m = parseFloat(e.target.value); if (m > 0) { hourLimit = m * 1e6; recompute(); }
+  });
+  document.getElementById('wlimit').addEventListener('input', (e) => {
+    const m = parseFloat(e.target.value); if (m > 0) { weekLimit = m * 1e6; recompute(); }
+  });
+
+  async function poll() {
+    try {
+      const r = await fetch('/usage', { cache: 'no-store' });
+      const d = await r.json();
+      hourVal = d.hour.total;
+      weekVal = d.week.total;
+      recompute();
+      document.getElementById('updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+    } catch (e) {
+      document.getElementById('updated').textContent = 'waiting for server…';
+    }
+  }
+
+  function frame() {
+    hourShown += (hourTarget - hourShown) * 0.08;
+    weekShown += (weekTarget - weekShown) * 0.08;
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  poll();
+  setInterval(poll, 3000);
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

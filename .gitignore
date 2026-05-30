@@ -1,0 +1,4 @@
+_diagnose.png
+__pycache__/
+*.pyc
+.DS_Store

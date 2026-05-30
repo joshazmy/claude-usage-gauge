@@ -8,74 +8,91 @@
   :root { color-scheme: dark; }
   html, body {
     margin: 0; min-height: 100%;
-    background: radial-gradient(circle at 50% 28%, #141417 0%, #050506 70%);
+    background: radial-gradient(circle at 50% 26%, #141417 0%, #050506 70%);
     color: #e8e8ea;
     font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 16px; padding: 26px; box-sizing: border-box;
+    gap: 14px; padding: 26px; box-sizing: border-box;
   }
   .title { font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: #6c6c78; }
+
+  /* ===== THE DEVICE: a hard 240x320 panel, rendered 1:1 (no zoom). =====
+     Everything inside .bezel is exactly what ships to the 2" screen. */
   .bezel {
-    width: 344px; height: 344px; border-radius: 50%;
+    width: 256px; height: 336px; border-radius: 18px;
     background: linear-gradient(145deg, #26262b, #0c0c0f);
-    padding: 12px; box-sizing: border-box;
-    box-shadow: 0 24px 60px rgba(0,0,0,.65), inset 0 2px 3px rgba(255,255,255,.06), 0 0 50px rgba(217,119,87,.08);
+    padding: 8px; box-sizing: border-box;
+    box-shadow: 0 18px 44px rgba(0,0,0,.6), inset 0 2px 3px rgba(255,255,255,.06), 0 0 40px rgba(217,119,87,.07);
   }
-  .bezel canvas { display: block; border-radius: 50%; background: #161616; }
-  .legend { display: flex; gap: 16px; font-size: 11px; color: #8a8a93; letter-spacing: .04em; }
-  .legend b { color: #cfcfd6; font-weight: 600; }
-  .controls { display: flex; gap: 18px; font-size: 13px; color: #b9b9c2; }
-  .controls label { display: flex; align-items: center; gap: 6px; }
-  .controls input { width: 56px; background: #1a1a20; color: #f0f0f2; border: 1px solid #34343c; border-radius: 8px; padding: 5px 6px; font-size: 13px; text-align: center; }
-  .demo { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #7a7a86; flex-wrap: wrap; justify-content: center; }
-  .demo button { background:#1a1a20; color:#cfcfd6; border:1px solid #34343c; border-radius:7px; padding:4px 9px; font-size:12px; cursor:pointer; }
-  .demo button:hover { border-color:#5a5a66; color:#fff; }
+  #screen {
+    display: block;
+    width: 240px; height: 320px;          /* TRUE SIZE — 1 canvas px = 1 device px */
+    border-radius: 10px;
+    background: #161616;
+    image-rendering: pixelated;            /* no smoothing — what the panel shows */
+  }
+  .sizehint { font-size: 11px; letter-spacing: .06em; color: #5f5f6a; }
+  .sizehint b { color: #9a9aa6; font-weight: 600; }
+
+  /* ===== dev controls — OUTSIDE the device box, never shipped ===== */
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 12px; color: #7a7a86; }
+  .row .lbl { color: #5f5f6a; letter-spacing: .04em; }
+  .row button {
+    background:#1a1a20; color:#cfcfd6; border:1px solid #34343c; border-radius:7px;
+    padding:4px 9px; font-size:12px; cursor:pointer;
+  }
+  .row button:hover { border-color:#5a5a66; color:#fff; }
+  .controls label { display: flex; align-items: center; gap: 6px; color:#b9b9c2; font-size:13px; }
+  .controls input {
+    width: 56px; background: #1a1a20; color: #f0f0f2; border: 1px solid #34343c;
+    border-radius: 8px; padding: 5px 6px; font-size: 13px; text-align: center;
+  }
   .cap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6c6c78; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ADE80; box-shadow: 0 0 8px #4ADE80; }
-  .note { max-width: 410px; text-align: center; font-size: 12px; line-height: 1.55; color: #6f6f7a; }
+  .note { max-width: 430px; text-align: center; font-size: 12px; line-height: 1.55; color: #6f6f7a; }
+  hr.sep { width: 280px; border: 0; border-top: 1px solid #1e1e24; margin: 4px 0; }
 </style>
 </head>
 <body>
   <div class="title">Claude Usage · Desk Screen</div>
-  <div class="bezel"><canvas id="screen"></canvas></div>
-  <div class="legend"><span><b>thick ring</b> = session · 5h</span><span><b>thin ring</b> = week · 7d</span></div>
-  <div class="controls">
+
+  <div class="bezel"><canvas id="screen" width="240" height="320"></canvas></div>
+  <div class="sizehint"><b>240 × 320 px</b> · actual device resolution — no zoom</div>
+
+  <hr class="sep">
+
+  <div class="row controls">
     <label>Session redline <input id="sbudget" type="number" min="1" step="1" value="100"> M</label>
     <label>Week redline <input id="wbudget" type="number" min="1" step="1" value="900"> M</label>
   </div>
-  <div class="demo">
-    <span>preview:</span>
+  <div class="row">
+    <span class="lbl">preview:</span>
     <button data-live="1">live</button>
     <button data-s="34" data-w="28">calm</button>
-    <button data-s="66" data-w="55">focused</button>
+    <button data-s="66" data-w="74">focused</button>
     <button data-s="88" data-w="72">worried</button>
     <button data-s="98" data-w="95">dead</button>
   </div>
   <div class="cap"><span class="dot"></span><span id="updated">starting…</span></div>
-  <p class="note">Vibe gauge — not an official fuel gauge. The limits below are your own estimates (Anthropic doesn't publish the real ones); the screen just shows how hard you're leaning on Claude. The real 240×240 round panel renders this 1:1.</p>
+  <p class="note">Vibe gauge — not an official fuel gauge. Limits are your own estimates (Anthropic doesn't publish the real ones). The box above is the literal 240×320 panel at 1:1.</p>
 
 <script>
   const canvas = document.getElementById('screen');
   const ctx = canvas.getContext('2d');
 
-  // Backing buffer = integer multiple of the 240px design space so sprite
-  // cells land on whole pixels (crisp, no seams). Rings keep light AA.
-  const DESIGN = 240;
-  const ratio = Math.max(1, window.devicePixelRatio || 1);
-  const K = Math.max(2, Math.round(320 * ratio / DESIGN));
-  canvas.width = DESIGN * K;
-  canvas.height = DESIGN * K;
-  canvas.style.width = '320px';
-  canvas.style.height = '320px';
-  ctx.scale(K, K);
+  // TRUE SIZE: backing buffer is exactly 240x320 — one canvas pixel maps to one
+  // hardware pixel. No devicePixelRatio scaling, no zoom. What you see ships.
+  const SCREEN_W = 240, SCREEN_H = 320;     // Waveshare ESP32-S3 2" panel (240x320)
+  canvas.width = SCREEN_W;
+  canvas.height = SCREEN_H;
+  canvas.style.width = SCREEN_W + 'px';
+  canvas.style.height = SCREEN_H + 'px';
 
   // =====================================================================
   //  YOUR PERSONAL REDLINES  —  edit these two numbers
-  //  These are ESTIMATES you set yourself, NOT Anthropic's real limits
-  //  (those are not published). The device is a "vibe gauge" showing how
-  //  hard you are leaning on Claude across a rolling 5-hour SESSION and a
-  //  rolling 7-day WEEK — it is not an official fuel gauge.
-  //  percent = tokens_used / your_redline, capped at 100%.
+  //  ESTIMATES you set yourself, NOT Anthropic's real limits (unpublished).
+  //  Device is a "vibe gauge": percent = tokens_used / your_redline, cap 100.
+  //  Primary = rolling 5h SESSION, secondary = rolling 7d WEEK.
   // =====================================================================
   const SESSION_BUDGET_TOKENS = 100_000_000;  // ~5h session redline (personal estimate)
   const WEEKLY_BUDGET_TOKENS  = 900_000_000;  // ~7d weekly redline  (personal estimate)
@@ -90,18 +107,16 @@
 
   // ---------- palette ----------
   const SCREEN_BG = '#161616';
-  const GREEN = '#4ADE80', AMBER = '#F59E0B', RED = '#EF4444';   // primary: meaning = how close to limit
-  const EMPTY_PRIMARY = '#2c2c2c';
-  const SEC_BLUE = '#3d6b9e', SEC_AMBER = '#a87b1e', SEC_RED = '#a8413d'; // secondary: muted, never competes
-  const EMPTY_SECONDARY = '#202022';
-  const ORANGE = '#C2613D', EYE = '#100f12', OUTLINE = '#F3EDE3', SWEAT = '#bfe3ff';
+  const GREEN = '#4ADE80', AMBER = '#F59E0B', RED = '#EF4444';
+  const EMPTY_PRIMARY = '#2c2c2c';          // unfilled track (dark gray)
+  const ORANGE = '#C2613D', HILITE = '#E0986E', EYE = '#100f12', SWEAT = '#bfe3ff';
 
-  function primaryColor(p)   { return p < 0.5 ? GREEN   : (p < 0.8 ? AMBER     : RED); }
-  function secondaryColor(p) { return p < 0.5 ? SEC_BLUE : (p < 0.8 ? SEC_AMBER : SEC_RED); }
-  // face escalates on the WORSE of the two rings: 0 calm, 1 focused, 2 worried, 3 dead
+  // colour means exactly ONE thing: how close to the limit
+  function primaryColor(p) { return p < 0.5 ? GREEN : (p < 0.8 ? AMBER : RED); }
+  // face escalates on the WORSE of the two %: 0 calm, 1 focused, 2 worried, 3 dead
   function faceLevel(p) { return p < 0.5 ? 0 : (p < 0.8 ? 1 : (p < 0.95 ? 2 : 3)); }
 
-  // ---------- your pixel creature (unchanged art) ----------
+  // ---------- pixel creature (no cream outline; lighter top-highlight rim) ----------
   const ART = [
     ".OOOOOOOOOOOOOO.",
     ".OOOOOOOOOOOOOO.",
@@ -117,20 +132,17 @@
     ".OOO..OOOO..OOO.",
     ".OOO..OOOO..OOO."
   ];
-
-  // face cells as [col,row] on the 16x13 grid. eyes/brows/mouth = EYE color; sweat = SWEAT color
   const FACES = {
-    0: { eye: [[4,4],[5,4],[4,5],[5,5], [10,4],[11,4],[10,5],[11,5]], sweat: [] },                                  // calm: round eyes
-    1: { eye: [[3,5],[4,5],[5,5], [10,5],[11,5],[12,5]], sweat: [] },                                               // focused: narrowed slits
-    2: { eye: [[4,5],[5,5],[10,5],[11,5], [5,3],[4,3],[3,4], [10,3],[11,3],[12,4], [7,9],[8,9]], sweat: [[13,3],[13,4]] }, // worried: raised brows + sweat + small mouth
-    3: { eye: [[3,3],[5,3],[4,4],[3,5],[5,5], [9,3],[11,3],[10,4],[9,5],[11,5], [6,9],[7,9],[8,9],[9,9]], sweat: [] }       // dead: x_x + flat mouth
+    0: { eye: [[4,4],[5,4],[4,5],[5,5], [10,4],[11,4],[10,5],[11,5]], sweat: [] },
+    1: { eye: [[3,5],[4,5],[5,5], [10,5],[11,5],[12,5]], sweat: [] },
+    2: { eye: [[4,5],[5,5],[10,5],[11,5], [5,3],[4,3],[3,4], [10,3],[11,3],[12,4], [7,9],[8,9]], sweat: [[13,3],[13,4]] },
+    3: { eye: [[3,3],[5,3],[4,4],[3,5],[5,5], [9,3],[11,3],[10,4],[9,5],[11,5], [6,9],[7,9],[8,9],[9,9]], sweat: [] }
   };
 
   function drawCreature(cx, cy, px, level) {
     const rows = ART.length, cols = ART[0].length;
     const ox = Math.round(cx - (cols * px) / 2), oy = Math.round(cy - (rows * px) / 2);
     const INF = 0.5;   // tiny overlap kills hairline seams between cells
-    const isBody = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols && ART[r][c] !== '.';
     const block = (c, r) => ctx.fillRect(ox + c * px - INF, oy + r * px - INF, px + 2 * INF, px + 2 * INF);
 
     ctx.fillStyle = ORANGE;
@@ -138,13 +150,11 @@
       for (let c = 0; c < cols; c++)
         if (ART[r][c] !== '.') block(c, r);
 
-    ctx.fillStyle = OUTLINE;   // cream sticker edge
-    for (let r = 0; r < rows; r++)
-      for (let c = 0; c < cols; c++)
-        if (ART[r][c] === '.' && (
-            isBody(r-1,c) || isBody(r+1,c) || isBody(r,c-1) || isBody(r,c+1) ||
-            isBody(r-1,c-1) || isBody(r-1,c+1) || isBody(r+1,c-1) || isBody(r+1,c+1)))
-          block(c, r);
+    // lighter top-highlight only: topmost body cell of each column (rim light, no surrounding frame)
+    ctx.fillStyle = HILITE;
+    for (let c = 0; c < cols; c++)
+      for (let r = 0; r < rows; r++)
+        if (ART[r][c] !== '.') { block(c, r); break; }
 
     const f = FACES[level] || FACES[0];
     ctx.fillStyle = EYE;
@@ -153,55 +163,37 @@
     for (const cr of f.sweat) block(cr[0], cr[1]);
   }
 
-  // ---------- segmented rings (single colour per ring = how close to limit) ----------
-  function seg(x, y, a, thick, len, col, glow) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(a);                 // tangent to the circle (keeps the dashed-pixel look)
-    if (glow) { ctx.shadowColor = col; ctx.shadowBlur = 6; }
-    ctx.fillStyle = col;
-    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(-thick / 2, -len / 2, thick, len, 2); ctx.fill(); }
-    else ctx.fillRect(-thick / 2, -len / 2, thick, len);
-    ctx.restore();
+  // ---------- horizontal rounded fill bar ----------
+  function roundedPath(x, y, w, h, r) {
+    r = Math.min(r, h / 2, w / 2);
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+    else ctx.rect(x, y, w, h);
   }
-  function drawRing(R, N, thick, len, pct, fillCol, emptyCol, glow) {
-    const filled = Math.round(Math.min(1, Math.max(0, pct)) * N);
-    for (let i = 0; i < N; i++) {
-      const a = -Math.PI / 2 + (i / N) * 2 * Math.PI;   // start 12 o'clock, fill clockwise
-      const x = 120 + Math.cos(a) * R, y = 120 + Math.sin(a) * R;
-      const on = i < filled;
-      seg(x, y, a, thick, len, on ? fillCol : emptyCol, on && glow);
-    }
-    ctx.shadowBlur = 0;
+  function drawBar(label, x, y, w, h, pct, fillCol) {
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#8a8a93';
+    ctx.font = '700 11px Consolas, "Courier New", monospace';
+    ctx.fillText(label, x + 1, y - 6);
+    roundedPath(x, y, w, h, h / 2); ctx.fillStyle = EMPTY_PRIMARY; ctx.fill();      // dark-gray track (#2c2c2c)
+    const fw = Math.max(h, Math.min(1, Math.max(0, pct)) * w);                      // pill grows from the left
+    roundedPath(x, y, fw, h, h / 2); ctx.fillStyle = fillCol; ctx.fill();           // colour = closeness only
   }
 
-  // ---------- compose the whole screen ----------
+  // ---------- compose (this is the literal screen) ----------
   function draw() {
-    ctx.clearRect(0, 0, DESIGN, DESIGN);
-    ctx.save();
-    ctx.beginPath(); ctx.arc(120, 120, 120, 0, 2 * Math.PI);
-    ctx.fillStyle = SCREEN_BG; ctx.fill();
-    ctx.clip();   // round panel — nothing draws outside the circle
+    ctx.clearRect(0, 0, SCREEN_W, SCREEN_H);
+    ctx.fillStyle = SCREEN_BG;
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);   // the whole 240x320 panel (#161616)
+    // TODO phase2: touch — panel is capacitive, but no touch handling is built yet
 
-    const pCol = primaryColor(sessionTarget);
-    const sCol = secondaryColor(weekTarget);
-
-    drawRing(111, 40, 14, 13, sessionShown, pCol, EMPTY_PRIMARY, true);   // PRIMARY: session (5h), thick, hugs edge
-    drawRing(95,  40,  6, 10, weekShown,   sCol, EMPTY_SECONDARY, false); // SECONDARY: week (7d), thin, muted
-
-    drawCreature(120, 95, 6, faceLevel(Math.max(sessionTarget, weekTarget)));   // centerpiece (raised so it clears the readout)
-
-    // readout: one big session %, tiny week % beneath it
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = pCol;
-    ctx.font = '700 24px Consolas, "Courier New", monospace';
-    ctx.fillText(Math.round(sessionTarget * 100) + '%', 120, 165);
-    ctx.fillStyle = sCol;
-    ctx.font = '600 11px Consolas, "Courier New", monospace';
-    ctx.fillText('week ' + Math.round(weekTarget * 100) + '%', 120, 182);
-
-    ctx.restore();
+    drawCreature(120, 80, 6, faceLevel(Math.max(sessionTarget, weekTarget)));        // face, large, near the top
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = primaryColor(sessionTarget);
+    ctx.font = '700 38px Consolas, "Courier New", monospace';
+    ctx.fillText(Math.round(sessionTarget * 100) + '%', 120, 166);                    // big session %
+    drawBar('SESSION · 5h', 30, 202, 180, 18, sessionShown, primaryColor(sessionTarget));
+    drawBar('WEEK · 7d',    30, 254, 180, 18, weekShown,    primaryColor(weekTarget));
   }
 
   function recompute() {
@@ -211,20 +203,19 @@
     weekTarget = Math.min(1, wTok / weekBudget);
   }
 
-  // ---------- controls + preview helpers ----------
+  // ---------- dev controls (all outside the device box) ----------
   const sbudget = document.getElementById('sbudget');
   const wbudget = document.getElementById('wbudget');
   sbudget.addEventListener('input', (e) => { const m = parseFloat(e.target.value); if (m > 0) { sessionBudget = m * 1e6; recompute(); } });
   wbudget.addEventListener('input', (e) => { const m = parseFloat(e.target.value); if (m > 0) { weekBudget = m * 1e6; recompute(); } });
 
-  for (const b of document.querySelectorAll('.demo button')) {
+  for (const b of document.querySelectorAll('[data-live], [data-s]')) {
     b.addEventListener('click', () => {
       if (b.dataset.live) { demoSession = null; demoWeek = null; }
       else { demoSession = (+b.dataset.s) / 100; demoWeek = (+b.dataset.w) / 100; }
       recompute();
     });
   }
-
   // debug hook for automated screenshots: __preview(88, 72) snaps instantly; __live() returns to real data
   window.__preview = (s, w) => { demoSession = s / 100; demoWeek = (w == null ? s : w) / 100; recompute(); sessionShown = sessionTarget; weekShown = weekTarget; };
   window.__live = () => { demoSession = null; demoWeek = null; recompute(); };

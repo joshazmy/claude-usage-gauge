@@ -10,6 +10,10 @@ Colour means exactly one thing — **how close you are to your own redline**:
 fuel gauge: Anthropic doesn't publish real limits, so the thresholds are personal estimates
 you set yourself.
 
+![Claude Usage Gauge — the four states (calm, focused, worried, dead-eyed), rendered by the browser simulator](docs/preview.png)
+
+*Browser-simulator render (1:1 with the 240×320 panel). The on-device photo/GIF lands once the board arrives.*
+
 > **Status (honest):** firmware + a 1:1 browser simulator are complete; **on-device
 > bring-up is pending** — flashing the real board, confirming the LCD pins, and capturing
 > the demo. No "it works" claim until there's a photo/GIF of it actually running. The

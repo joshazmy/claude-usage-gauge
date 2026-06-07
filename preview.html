@@ -216,13 +216,23 @@
       ctx.stroke();
       ctx.globalAlpha = 1;
       const label = alert.type === 'attention' ? 'NEEDS YOU' : 'DONE';
-      const proj = (alert.project || '').slice(0, 16);
+      ctx.font = '700 12px Consolas, "Courier New", monospace';
+      const pillW = SCREEN_W - 36, innerW = pillW - 16;            // pill minus h-padding
+      let txt = label;                                            // label always shows; name only if it fits
+      if (alert.project) {
+        const full = label + '  ·  ' + alert.project;
+        if (ctx.measureText(full).width <= innerW) txt = full;
+        else {                                                     // truncate the name to fit; never overflow
+          let p = alert.project;
+          while (p && ctx.measureText(label + '  ·  ' + p + '…').width > innerW) p = p.slice(0, -1);
+          txt = p ? (label + '  ·  ' + p + '…') : label;
+        }
+      }
       ctx.fillStyle = col;
-      ctx.fillRect(18, SCREEN_H - 42, SCREEN_W - 36, 26);          // banner pill
+      ctx.fillRect(18, SCREEN_H - 42, pillW, 26);                  // banner pill
       ctx.fillStyle = '#0c0c0f';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = '700 12px Consolas, "Courier New", monospace';
-      ctx.fillText(proj ? (label + '  ·  ' + proj) : label, SCREEN_W / 2, SCREEN_H - 29);
+      ctx.fillText(txt, SCREEN_W / 2, SCREEN_H - 29);
       ctx.restore();
     }
   }

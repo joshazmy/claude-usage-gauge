@@ -19,10 +19,38 @@ and draw the gauge (Claude logo + a ring that fills green->amber->red).
 import os
 import json
 import glob
+import time
 import datetime
 
 # Folder where Claude Code stores every conversation (one folder per project).
 LOG_DIR = os.path.join(os.path.expanduser("~"), ".claude", "projects")
+
+# Attention beacon written by hook.py on Claude Code's Stop/Notification hooks.
+# collect() folds it into the /usage JSON so the gauge can flash amber (needs you)
+# or green (done). Old alerts expire so a missed clear never strobes forever.
+ALERT_FILE = os.path.join(os.path.expanduser("~"), ".claude", "gauge-alert.json")
+ALERT_EXPIRE_S = 300   # an alert older than this is treated as cleared
+
+
+def read_alert():
+    """Read the gauge attention beacon. Returns {type, project, age_s}; type is
+    'none' when there's no fresh alert (file missing, malformed, or expired)."""
+    none = {"type": "none", "project": "", "age_s": 0}
+    try:
+        with open(ALERT_FILE, "r", encoding="utf-8") as fh:
+            a = json.load(fh)
+        if not isinstance(a, dict):
+            return none
+        age = max(0, int(time.time() - float(a.get("ts") or 0)))
+        kind = a.get("type")
+        if kind not in ("attention", "done") or age > ALERT_EXPIRE_S:
+            return {**none, "age_s": age}
+        return {"type": kind, "project": str(a.get("project") or ""), "age_s": age}
+    except Exception:
+        # A corrupt or half-written alert file (bad JSON, non-dict, non-numeric
+        # ts) must NEVER take down /usage or the serial bridge — degrade to "no
+        # alert" instead of raising out of collect().
+        return none
 
 
 def parse_ts(raw):
@@ -114,6 +142,7 @@ def collect():
         "hour": hour_bucket,         # kept for reference / debugging
         "today": today_bucket,
         "week": week_bucket,         # secondary ring (rolling 7 days)
+        "alert": read_alert(),       # attention beacon: needs you / done / none
     }
 
 

@@ -104,6 +104,7 @@
   let demoSession = null, demoWeek = null;  // preview-only overrides (fractions 0..1)
   let sessionTarget = 0, weekTarget = 0;    // 0..1 (used / budget)
   let sessionShown = 0, weekShown = 0;      // animated fill
+  let alert = { type: 'none', project: '' };// attention beacon from /usage (hook.py)
 
   // ---------- palette ----------
   const SCREEN_BG = '#161616';
@@ -194,6 +195,31 @@
     ctx.fillText(Math.round(sessionTarget * 100) + '%', 120, 166);                    // big session %
     drawBar('SESSION · 5h', 30, 202, 180, 18, sessionShown, primaryColor(sessionTarget));
     drawBar('WEEK · 7d',    30, 254, 180, 18, weekShown,    primaryColor(weekTarget));
+
+    // ---- attention beacon: pulse a border when Claude needs you / is done ----
+    //   amber = needs you (permission / idle),  green = finished a long turn.
+    //   Driven by /usage -> alert (hook.py). Auto-clears when the alert expires.
+    if (alert && (alert.type === 'attention' || alert.type === 'done')) {
+      const col = alert.type === 'attention' ? AMBER : GREEN;
+      const ms = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const a = 0.30 + 0.50 * (0.5 + 0.5 * Math.sin(ms / 250));   // ~0.6 Hz pulse
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 10;
+      roundedPath(7, 7, SCREEN_W - 14, SCREEN_H - 14, 14);        // inset: stroke stays on-panel
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      const label = alert.type === 'attention' ? 'NEEDS YOU' : 'DONE';
+      const proj = (alert.project || '').slice(0, 16);
+      ctx.fillStyle = col;
+      ctx.fillRect(18, SCREEN_H - 42, SCREEN_W - 36, 26);          // banner pill
+      ctx.fillStyle = '#0c0c0f';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '700 12px Consolas, "Courier New", monospace';
+      ctx.fillText(proj ? (label + '  ·  ' + proj) : label, SCREEN_W / 2, SCREEN_H - 29);
+      ctx.restore();
+    }
   }
 
   function recompute() {
@@ -227,9 +253,11 @@
       const d = await r.json();
       sessionVal = d.session ? d.session.total : (d.hour ? d.hour.total : 0);
       weekVal = d.week ? d.week.total : 0;
+      alert = d.alert || { type: 'none', project: '' };
       recompute();
       updated.textContent = 'updated ' + new Date().toLocaleTimeString();
     } catch (e) {
+      alert = { type: 'none', project: '' };   // feed dropped: don't let a stale flash stick on
       updated.textContent = 'waiting for server…';
     }
   }

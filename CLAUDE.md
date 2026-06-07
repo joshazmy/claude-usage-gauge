@@ -17,6 +17,10 @@ The firmware (`firmware/src/main.cpp`) and the browser simulator (`preview.html`
 must stay **pixel-identical** — DESIGN.md governs both. The offline PIL renderers
 (`_diagnose.py`, `_diagnose_flash.py`) mirror the same draw math for screenshots.
 
+> **Status:** the attention beacon currently runs in the browser simulator. The
+> device half (the `bridge.py` `s,w,a` serial field + the firmware flash render)
+> is Phase 2 and lands when the board is brought up — see issue #1.
+
 ## Layout
 
 | File | What it is |

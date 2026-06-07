@@ -4,6 +4,10 @@
 > the ESP32 firmware (`firmware/src/main.cpp`) and the 1:1 browser simulator
 > (`preview.html`) — they must stay pixel-identical. Read this before changing
 > anything you can see.
+>
+> **Implementation status:** the attention beacon is live in the browser simulator;
+> its on-device half (the `bridge.py` `s,w,a` field + the firmware flash render) is
+> Phase 2, pending board bring-up (issue #1). The rest of the gauge runs on both.
 
 ## North Star
 
@@ -29,7 +33,7 @@ design problem. So:
 - **Legible at two distances:** the exact number at arm's length, the *state*
   (color + face + flash) from across the room.
 
-## The Four Laws
+## The Five Laws
 
 1. **Color means exactly ONE thing: closeness to your redline.**
    🟢 `< 50%` · 🟠 `50–80%` · 🔴 `> 80%`. No rainbow, no gradients, no second
@@ -117,6 +121,9 @@ future phase; nothing taps today.
 
 ## The Attention Beacon (primary mode — job #1)
 
+> **Status:** implemented in the browser simulator (`preview.html`). The device
+> render (`bridge.py` sends a third `a` field; firmware draws the flash) is Phase 2.
+
 Fires from Claude Code hooks (`hook.py`) via `~/.claude/gauge-alert.json`. Two states:
 
 - **Amber "NEEDS YOU"** — Claude is blocked on you (a permission prompt, or input idle).
@@ -170,6 +177,6 @@ Minimal-functional only. No motion exists for decoration.
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
-| 2026-06-06 | Codified the existing locked system into DESIGN.md | Created by /design-consultation after spec→review→design→qa on the attention beacon, to give /design-review and /qa a calibration target |
-| 2026-06-06 | Reordered the north star: attention > usage > aesthetics | User stated the beacon ("does Claude need my help") is the #1 reason the device sits on their desk |
-| 2026-06-06 | Beacon dims the gauge (scrim) instead of just framing it | /design-review F1/F2/F4 — color collision with the usage palette + two competing glance signals; the scrim makes the alert pre-empt cleanly |
+| 2026-06-06 | Documented the design system as a source of truth | Capture the established visual rules so the firmware, the simulator, and any future work stay consistent |
+| 2026-06-06 | North star ordered: attention > usage > aesthetics | The attention beacon ("does Claude need me?") is the primary reason the device sits on the desk; usage is second, looks third |
+| 2026-06-06 | Beacon dims the gauge (scrim) rather than only framing it | The beacon reused the usage palette (green/amber) and competed with the creature's face as a second glance signal; dimming makes the alert pre-empt cleanly with no color clash |

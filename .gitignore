@@ -9,3 +9,4 @@ __pycache__/
 .pio/
 firmware/.pio/
 *.bin
+.gstack/

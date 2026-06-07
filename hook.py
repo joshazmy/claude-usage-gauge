@@ -129,15 +129,21 @@ def cmd_notify(data):
 
 
 def main():
-    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    data = _read_stdin_json()
-    if cmd == "prompt":
-        cmd_prompt(data)
-    elif cmd == "stop":
-        cmd_stop(data)
-    elif cmd == "notify":
-        cmd_notify(data)
-    # unknown command -> no-op
+    try:
+        cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+        data = _read_stdin_json()
+        if cmd == "prompt":
+            cmd_prompt(data)
+        elif cmd == "stop":
+            cmd_stop(data)
+        elif cmd == "notify":
+            cmd_notify(data)
+        # unknown command -> no-op
+    except Exception:
+        # A hook must NEVER wedge a Claude Code session. Swallow anything that
+        # slips past the inner guards (e.g. os.getcwd() raising on a deleted
+        # working dir) and still exit clean.
+        pass
     sys.exit(0)
 
 

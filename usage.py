@@ -45,7 +45,10 @@ def read_alert():
         kind = a.get("type")
         if kind not in ("attention", "done") or age > ALERT_EXPIRE_S:
             return {**none, "age_s": age}
-        return {"type": kind, "project": str(a.get("project") or ""), "age_s": age}
+        # Cap project length: a corrupt or hand-written alert file with a huge
+        # "project" string would otherwise be truncated one char at a time in
+        # preview.html's banner-fit loop every frame and freeze the browser.
+        return {"type": kind, "project": str(a.get("project") or "")[:64], "age_s": age}
     except Exception:
         # A corrupt or half-written alert file (bad JSON, non-dict, non-numeric
         # ts) must NEVER take down /usage or the serial bridge — degrade to "no
